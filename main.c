@@ -102,7 +102,7 @@ int main(void) {
 		sensor_calibrate.myr = sensor.mag_y_float;
 		sensor_calibrate.mzr = sensor.mag_z_float;
 		// acutal algorithm for calibrate
-		PreProcess(&sensor_calibrate);
+		PreProcess(&sensor_calibrate);			// use quaterion filter method
 		UpdateGDFilter_MARG(&sensor_calibrate);
 		roll = getRoll(sensor_calibrate.SEq1, sensor_calibrate.SEq2, sensor_calibrate.SEq3, sensor_calibrate.SEq4);
 		pitch = getPitch(sensor_calibrate.SEq1, sensor_calibrate.SEq2, sensor_calibrate.SEq3, sensor_calibrate.SEq4);
