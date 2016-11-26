@@ -4,51 +4,56 @@
  *  Created on: Jul 1, 2016
  *      Author: art
  */
+#include <stdbool.h>
 
 #ifndef BOSCH_BMX055_CALIBRATE_H_
 #define BOSCH_BMX055_CALIBRATE_H_
 // Euler sequence: roll(x),pitch(y),yaw(z)
 #define RAD2DEG 57.295780
 #define DEG2RAD 0.017453
+
 #define dtTarget 20000
-#define MXB 3.750 //9.85
-#define MYB -45.750 //44.69
-#define MZB 45 //10.14
-#define MXS 0.978 //0.94
-#define MYS 1.018 //1.06
-#define MZS 1.002 //1.00
-#define GXB -3.02
-#define GYB 1.68
-#define GZB 0.72
+#define MXB 0 //9.85
+#define MYB 0 //44.69
+#define MZB 0 //10.14
+#define MXS 1 //0.94
+#define MYS 1 //1.06
+#define MZS 1 //1.00
+#define GXB 0
+#define GYB 0
+#define GZB 0
 #define GYRO_BIAS_DRIFT 0
 
+#define PI 3.1416
+
 struct Sensor_Calibrate{
-	float mxr,myr,mzr;		// mag raw data
-	float mx,my,mz;			// mag data processed
-	float axr,ayr,azr;		// accel raw
-	float ax,ay,az;			// accel
-	float gxr,gyr,gzr;		// gyro raw
-	float gx,gy,gz;			// gyro
+	float ax,ay,az;
+	float gxr,gyr,gzr;
+	float gx,gy,gz;
+	float mxr,myr,mzr;
+	float mx,my,mz;
 
-	float beta,zeta;
-	float wbx, wby, wbz;
-	float bx, bz;
-	//float wbx = 0, wby = 0, wbz = 0;
-	//float bx = 1, bz = 0;
-
-	float SEq1, SEq2, SEq3, SEq4;
-	//float SEq1 = 1, SEq2 = 0, SEq3 = 0, SEq4 = 0;
-
+	float pitch_accl,roll_accl;
+	float yaw;
+	float MX,MY;
 	unsigned int  t_elapse;
 	float dt;
 };
 
-void PreProcess(struct Sensor_Calibrate *sc);
-void UpdateGDFilter_MARG(struct Sensor_Calibrate *sc);
-void DLP(float *val_old, float val_new, float alpha);
+struct KF{
+  bool initial;
+  float x0,x1;
+  float y;
+  float u;
+  float M00,M01,M10,M11;
+  float W00,W11;
+  float v;
+  float Z00,Z01,Z10,Z11;
+  float K0,K1;
+};
 
-float getPitch(float q0, float q1, float q2, float q3);
-float getYaw(float q0, float q1, float q2, float q3);
-float getRoll(float q0, float q1, float q2, float q3);
 
+void UpdateKF(struct KF *kf, float y, float u);
+void InitializeKF(struct KF *kf, float w00, float w11, float v);
+void RunKF(struct KF *kf, int dt);
 #endif /* BOSCH_BMX055_CALIBRATE_H_ */
