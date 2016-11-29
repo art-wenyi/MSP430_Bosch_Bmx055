@@ -108,15 +108,15 @@ int main(void) {
 		pitch = getPitch(sensor_calibrate.SEq1, sensor_calibrate.SEq2, sensor_calibrate.SEq3, sensor_calibrate.SEq4);
 		yaw = getYaw(sensor_calibrate.SEq1, sensor_calibrate.SEq2, sensor_calibrate.SEq3, sensor_calibrate.SEq4);
 		 //display to pc from uart
-//		ftos(roll, sensor_data_disp, 3);
-//		UartA2_sendstr(sensor_data_disp);
-//		UartA2_sendstr("   ");
-//		ftos(pitch, sensor_data_disp, 3);
-//		UartA2_sendstr(sensor_data_disp);
-//		UartA2_sendstr("   ");
-//		ftos(yaw, sensor_data_disp, 3);
-//		UartA2_sendstr(sensor_data_disp);
-//		UartA2_sendstr("   \n");
+		ftos(roll, sensor_data_disp, 3);
+		UartA2_sendstr(sensor_data_disp);
+		UartA2_sendstr("   ");
+		ftos(pitch, sensor_data_disp, 3);
+		UartA2_sendstr(sensor_data_disp);
+		UartA2_sendstr("   ");
+		ftos(yaw, sensor_data_disp, 3);
+		UartA2_sendstr(sensor_data_disp);
+		UartA2_sendstr("   \n");
 		_nop();
 	}
 
