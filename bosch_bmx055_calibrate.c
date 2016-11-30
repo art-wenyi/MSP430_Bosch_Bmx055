@@ -4,8 +4,9 @@
  *  Created on: Jul 1, 2016
  *      Author: art
  */
-
+//#include "msp430.h"
 #include "bosch_bmx055_calibrate.h"
+//#include <msp430_math.h>
 #include "math.h"
 
 
@@ -25,7 +26,7 @@ void InitializeKF(struct KF *kf, float w00, float w11, float v){
   kf->v = v;
 }
 
-void RunKF(struct KF *kf, int dt){
+void RunKF(struct KF *kf, float dt){
   kf->x0 = kf->x0 + (kf->u - kf->x1)*dt;
   if (kf->initial){
     kf->initial = false;

@@ -55,5 +55,5 @@ struct KF{
 
 void UpdateKF(struct KF *kf, float y, float u);
 void InitializeKF(struct KF *kf, float w00, float w11, float v);
-void RunKF(struct KF *kf, int dt);
+void RunKF(struct KF *kf, float dt);
 #endif /* BOSCH_BMX055_CALIBRATE_H_ */

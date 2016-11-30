@@ -3,8 +3,8 @@
 #include "bosch_bmx055_msp430.h"
 #include "bosch_bmx055_calibrate.h"
 #include "msp430_uart.h"
+//#include "msp430_math.h"
 #include "math.h"
-
 /*
  * main.c
  */
@@ -75,6 +75,9 @@ int main(void) {
 	struct KF pitchKF, rollKF;
 	pitchKF.initial = true;
 	rollKF.initial = true;
+	InitializeKF(&pitchKF,0.0002,0.0004,0.5);
+	InitializeKF(&rollKF,0.0002,0.0004,0.5);
+	float roll2, pitch2, yaw2;
 	//unsigned char tmp;
 	while(1){
 		sensor_calibrate.t_elapse =	TA1R;		// get a elapse time, for calibrate calculation
@@ -113,33 +116,45 @@ int main(void) {
 		sensor_calibrate.gy = sensor_calibrate.gyr - GYB;
 		sensor_calibrate.gz = sensor_calibrate.gzr - GZB;
 
-		sensor_calibrate.pitch_accl = -atan2(sensor_calibrate.ax,sqrt(sensor_calibrate.ay*sensor_calibrate.ay + sensor_calibrate.az*sensor_calibrate.az));
-		sensor_calibrate.roll_accl = atan2(sensor_calibrate.ay, sensor_calibrate.az);
+		sensor_calibrate.pitch_accl = -atan2f(sensor_calibrate.ax,sqrtf(sensor_calibrate.ay*sensor_calibrate.ay + sensor_calibrate.az*sensor_calibrate.az));
+		sensor_calibrate.roll_accl = atan2f(sensor_calibrate.ay, sensor_calibrate.az);
 
 		sensor_calibrate.dt = (float)sensor_calibrate.t_elapse * 0.000001;		// convert dt to second
-		UpdateKF(&pitchKF,sensor_calibrate.pitch_accl,sensor_calibrate.gy*DEG2RAD);
+		UpdateKF(&pitchKF, sensor_calibrate.pitch_accl, sensor_calibrate.gy*DEG2RAD);
 		RunKF(&pitchKF, sensor_calibrate.dt);
-		UpdateKF(&rollKF,sensor_calibrate.roll_accl,sensor_calibrate.gx*DEG2RAD);
+		UpdateKF(&rollKF, sensor_calibrate.roll_accl, sensor_calibrate.gx*DEG2RAD);
 		RunKF(&rollKF, sensor_calibrate.dt);
+
+
 
 		pitch = pitchKF.x0;
 		roll = rollKF.x0;
+		float sin_pitch = sinf(pitch);
+		float cos_roll = cosf(roll);
+		float sin_roll = sinf(roll);
 
-		sensor_calibrate.MX = sensor_calibrate.mx*cos(pitch) + sensor_calibrate.my*sin(pitch)*sin(roll) + sensor_calibrate.mz*sin(pitch)*cos(roll);
-		sensor_calibrate.MY = sensor_calibrate.my*cos(roll) - sensor_calibrate.mz*sin(roll);
+		sensor_calibrate.MX = sensor_calibrate.mx*cosf(pitch) + sensor_calibrate.my*sin_pitch*sin_roll + sensor_calibrate.mz*sin_pitch*cos_roll;
+		sensor_calibrate.MY = sensor_calibrate.my*cos_roll - sensor_calibrate.mz*sin_roll;
 
-		float yaw_mag = -atan2(sensor_calibrate.MY, sensor_calibrate.MX);
+
+		float yaw_mag = -atan2f(sensor_calibrate.MY, sensor_calibrate.MX);
+
+		sensor_calibrate.t_elapse =	TA1R;
+		sensor_calibrate.dt = (float)sensor_calibrate.t_elapse * 0.000001;		// convert dt to second
 
 		yaw = yaw * 0.75 + yaw_mag*0.25;
 
+		roll2 = roll * RAD2DEG;
+		pitch2 = pitch * RAD2DEG;
+		yaw2 = yaw * RAD2DEG;
 		// display to pc from uart
-		ftos(roll, sensor_data_disp, 3);
+		ftos(roll2, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   ");
-		ftos(pitch, sensor_data_disp, 3);
+		ftos(pitch2, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   ");
-		ftos(yaw, sensor_data_disp, 3);
+		ftos(yaw2, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   \n");
 		_nop();
@@ -216,7 +231,7 @@ void ftos(float n, char *res, int afterpoint) 		// after point is the resolution
         // Get the value of fraction part upto given no.
         // of points after dot. The third parameter is needed
         // to handle cases like 233.007
-        fpart = fpart * pow(10, afterpoint);
+        fpart = fpart * powf(10, afterpoint);
 
         intToStr((int)fpart, res + i + 1, afterpoint);
     }
