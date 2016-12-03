@@ -5,6 +5,7 @@
  *      Author: art
  */
 #include <stdbool.h>
+#include "bosch_bmx055_msp430.h"
 
 #ifndef BOSCH_BMX055_CALIBRATE_H_
 #define BOSCH_BMX055_CALIBRATE_H_
@@ -33,11 +34,15 @@ struct Sensor_Calibrate{
 	float mxr,myr,mzr;
 	float mx,my,mz;
 
+	float mxb,myb,mzb;
+	float mxs,mys,mzs;
+
 	float pitch_accl,roll_accl;
 	float yaw;
 	float MX,MY;
 	unsigned int  t_elapse;
 	float dt;
+
 };
 
 struct KF{
@@ -56,4 +61,5 @@ struct KF{
 void UpdateKF(struct KF *kf, float y, float u);
 void InitializeKF(struct KF *kf, float w00, float w11, float v);
 void RunKF(struct KF *kf, float dt);
+void calibrate(struct Sensor_Calibrate *sensor_calibrate, struct Sensor *sensor);
 #endif /* BOSCH_BMX055_CALIBRATE_H_ */

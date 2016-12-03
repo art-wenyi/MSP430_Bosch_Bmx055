@@ -19,15 +19,23 @@ struct Sensor sensor = {
 
 // calibrated sensor data
 struct Sensor_Calibrate sensor_calibrate = {
+	.mxb = 0,
+	.myb = 0,
+	.mzb = 0,
+	.mxs = 1,
+	.mys = 1,
+	.mzs = 1,
 	.dt = 0
 };
 
 struct KF pitchKF, rollKF;
+int calibrate_flag = 0;
 
 // use for convert from float to string
 void reverse(char *str, int len);
 int intToStr(int x, char str[], int d);
 void ftos(float n, char *res, int afterpoint);
+void buttonInit(void);
 
 
 int main(void) {
@@ -64,6 +72,7 @@ int main(void) {
 	//== clock init finished, below are the main function ==
 	BMX055_Init();		// sensor initiation
 	UartA2_Init(115200, 'n', 'l', '8', 1);		  // init uart 2
+	buttonInit();
 	__enable_interrupt();
 
 
@@ -77,15 +86,17 @@ int main(void) {
 	rollKF.initial = true;
 	InitializeKF(&pitchKF,0.0002,0.0004,0.5);
 	InitializeKF(&rollKF,0.0002,0.0004,0.5);
+	trimBMX055(&sensor);		// get trim data from sensor
 	float roll2, pitch2, yaw2;
 	//unsigned char tmp;
 	while(1){
-		sensor_calibrate.t_elapse =	TA1R;		// get a elapse time, for calibrate calculation
-		TA1CTL |= TACLR;		// clear ta1 count
 		// read data from sensor
 		Gyro_Read_Data(sensor.gyro_x, sensor.gyro_y, sensor.gyro_z);
 		Accel_Read_Data(sensor.accel_x, sensor.accel_y, sensor.accel_z);
 		Mag_Read_Data(sensor.mag_x, sensor.mag_y, sensor.mag_z);
+		Temp_Read_Data(sensor.temperature);
+		sensor_calibrate.t_elapse =	TA1R;		// get a elapse time, for calibrate calculation
+		TA1CTL |= TACLR;		// clear ta1 count
 		// convert raw 2 byte data from float value
 		sensor.convert(&sensor);
 		// send raw float data to calibrate
@@ -108,9 +119,9 @@ int main(void) {
 //		yaw = getYaw(sensor_calibrate.SEq1, sensor_calibrate.SEq2, sensor_calibrate.SEq3, sensor_calibrate.SEq4);
 
 		// use simplified method
-		sensor_calibrate.mx = (sensor_calibrate.mxr - MXB)/MXS;
-		sensor_calibrate.my = (sensor_calibrate.myr - MYB)/MYS;
-		sensor_calibrate.mz = (sensor_calibrate.mzr - MZB)/MZS;
+		sensor_calibrate.mx = (sensor_calibrate.mxr - sensor_calibrate.mxb)/sensor_calibrate.mxs;
+		sensor_calibrate.my = (sensor_calibrate.myr - sensor_calibrate.myb)/sensor_calibrate.mys;
+		sensor_calibrate.mz = (sensor_calibrate.mzr - sensor_calibrate.mzb)/sensor_calibrate.mzs;
 
 		sensor_calibrate.gx = sensor_calibrate.gxr - GXB;
 		sensor_calibrate.gy = sensor_calibrate.gyr - GYB;
@@ -118,6 +129,7 @@ int main(void) {
 
 		sensor_calibrate.pitch_accl = -atan2f(sensor_calibrate.ax,sqrtf(sensor_calibrate.ay*sensor_calibrate.ay + sensor_calibrate.az*sensor_calibrate.az));
 		sensor_calibrate.roll_accl = atan2f(sensor_calibrate.ay, sensor_calibrate.az);
+//		sensor_calibrate.roll_accl = atan2f(sensor_calibrate.ay, sqrtf(sensor_calibrate.ax*sensor_calibrate.ax + sensor_calibrate.az*sensor_calibrate.az));
 
 		sensor_calibrate.dt = (float)sensor_calibrate.t_elapse * 0.000001;		// convert dt to second
 		UpdateKF(&pitchKF, sensor_calibrate.pitch_accl, sensor_calibrate.gy*DEG2RAD);
@@ -144,9 +156,26 @@ int main(void) {
 
 		yaw = yaw * 0.75 + yaw_mag*0.25;
 
+//		if (abs(yaw)>(0.5*PI) && abs(yaw_mag)>(0.5*PI)){
+//		  float sgn_yaw = yaw/abs(yaw);
+//		  float sgn_yawmag = yaw_mag/abs(yaw_mag);
+//		  if (sgn_yaw != sgn_yawmag){
+//		    yaw = yaw + 2*PI*sgn_yawmag;
+//		  }
+//		}
+//
+//	    yaw = yaw * 0.9 + yaw_mag * 0.1;
+//
+//		if (abs(yaw)>= PI){
+//		  yaw = yaw - 2*PI*yaw/abs(yaw);
+//		}
+
 		roll2 = roll * RAD2DEG;
 		pitch2 = pitch * RAD2DEG;
 		yaw2 = yaw * RAD2DEG;
+//		float pitch_accl2,roll_accl2;
+//		pitch_accl2 = sensor_calibrate.pitch_accl * RAD2DEG;
+//		roll_accl2  = sensor_calibrate.roll_accl * RAD2DEG;
 		// display to pc from uart
 		ftos(roll2, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
@@ -158,11 +187,38 @@ int main(void) {
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   \n");
 		_nop();
+
+		if(calibrate_flag==1){
+			calibrate_flag=0;
+			calibrate(&sensor_calibrate, &sensor);
+		}
+
 	}
 
 }
 
+/* Push Button Interrupt Service Routine */
+#pragma vector=PORT1_VECTOR
+__interrupt void Port_1(void){
 
+	/* Executed on Push Button Interrupt */
+	if (P1IFG & BIT1){
+		P1IFG &= ~BIT1;												// Clear the Button Interrupt Flag
+		calibrate_flag=1;
+	}
+}
+//========================================================
+//========================================================
+void buttonInit(void){
+	P1DIR &= ~BIT1;											// Button is an input
+	P1OUT |= BIT1;                      						// Pull-up resistor
+	P1REN |= BIT1;                      						// Resistor enabled
+	P1DS  &= ~BIT1;
+	P1IES |= BIT1;                      						// Interrupt on high-to-low transition
+	P1IE |= BIT1;                       						// Interrupt enable
+	P1IFG &= ~BIT1;											// Clear Interrupt Flag
+}
+//========================================================
 // reverses a string 'str' of length 'len'
 void reverse(char *str, int len)
 {

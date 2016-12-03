@@ -260,6 +260,7 @@ struct Sensor{
 	unsigned char mag_x[2];
 	unsigned char mag_y[2];
 	unsigned char mag_z[2];
+	unsigned char temperature[2];
 	float gyro_reso;	// dafault use 1000dps
 	float accel_reso;		// default use 4g/s
 	float mag_reso; 	// default mag 16bit reso
@@ -272,6 +273,9 @@ struct Sensor{
 	float mag_x_float;
 	float mag_y_float;
 	float mag_z_float;
+	int temp_int;
+	unsigned char dig_x1,dig_x2,dig_y1,dig_y2,dig_xy1,dig_xy2;		// for temperature compensation
+	int dig_z1,dig_z2,dig_z3,dig_z4,dig_xyz1;	// for temperature compensation
 	int cov_tmp;   		// for data convert from char -> int -> float, middle int tmp
 	void (*convert)(struct Sensor *sensor);			// function for convert data from char -> int -> float, need to be registered to Mpu_Convert_Data
 	//void (*convert_asa)(struct Sensor *sensor);		// convert mag asa data
@@ -292,4 +296,6 @@ void Gyro_Read_Data(unsigned char *x, unsigned char *y, unsigned char *z);
 void Accel_Read_Data(unsigned char *x, unsigned char *y, unsigned char *z);
 void Mag_Read_Data(unsigned char *x, unsigned char *y, unsigned char *z);
 void Bmx_Convert_Data(struct Sensor *sensor);
+void trimBMX055(struct Sensor *sensor);
+void Temp_Read_Data(unsigned char *t);
 #endif /* BOSCH_BMX055_MSP430_H_ */

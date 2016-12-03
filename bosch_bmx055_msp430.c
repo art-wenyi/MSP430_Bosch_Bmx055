@@ -27,7 +27,7 @@ void BMX055_Chip_Init(){
    	Gyro_Write_Register(BMX055_GYRO_RANGE, G_1000DPS);  // set GYRO FS range
  	Gyro_Write_Register(BMX055_GYRO_BW, G_100Hz12Hz);     // set GYRO ODR and Bandwidth
  	Gyro_Write_Register(BMX055_GYRO_LPM1, 0x00);			// set to normal mode, no suspend
- 	Accel_Write_Register(BMX055_GYRO_RATE_HBW, 0x00);              // Use filtered data, read lsb before msb to ensure data integrity
+ 	Gyro_Write_Register(BMX055_GYRO_RATE_HBW, 0x00);              // Use filtered data, read lsb before msb to ensure data integrity
 
  	// start with all sensors in default mode with all registers reset
    	Accel_Write_Register(BMX055_ACC_BGW_SOFTRESET, 0xB6);  // reset accelerometer
@@ -43,7 +43,9 @@ void BMX055_Chip_Init(){
 	Mag_Write_Register(BMX055_MAG_PWR_CNTL1, 0x01); // set to sleep mode, it's needed for state transit
 	__delay_cycles(160000);
 	Mag_Write_Register(BMX055_MAG_PWR_CNTL2, MODR_30Hz + 0x00); // Normal mode, 30hz
-
+	// Enhanced Regular
+	Mag_Write_Register(BMX055_MAG_REP_XY, 0x07);  // 15 repetitions (oversampling)
+	Mag_Write_Register(BMX055_MAG_REP_Z,  0x22);  // 27 repetitions (oversampling)
 }
 
 // gyro read
@@ -126,10 +128,70 @@ void Bmx_Convert_Data(struct Sensor *sensor){
 	sensor->cov_tmp = (((int)sensor->accel_z[1] << 8) | sensor->accel_z[0]) >> 4;    // [0] is high bit, [1] is low bit
 	sensor->accel_z_float = (float)sensor->cov_tmp * sensor->accel_reso;
 	//mag convert, 13 bits for xy, 15 bits for z
-	sensor->cov_tmp = (((int)sensor->mag_x[1] << 8) | sensor->mag_x[0]) >> 3;    // [0] is high bit, [1] is low bit
+
+	// no temperature compensation conversion
+//	sensor->cov_tmp = (((int)sensor->mag_x[1] << 8) | sensor->mag_x[0]) >> 3;    // [0] is high bit, [1] is low bit
+//	sensor->mag_x_float = (float)sensor->cov_tmp * sensor->mag_reso;
+//	sensor->cov_tmp = (((int)sensor->mag_y[1] << 8) | sensor->mag_y[0]) >> 3;    // [0] is high bit, [1] is low bit
+//	sensor->mag_y_float = (float)sensor->cov_tmp * sensor->mag_reso;
+//	sensor->cov_tmp = (((int)sensor->mag_z[1] << 8) | sensor->mag_z[0]) >> 1;    // [0] is high bit, [1] is low bit
+//	sensor->mag_z_float = (float)sensor->cov_tmp * sensor->mag_reso;
+
+	int mdata_x = (((int)sensor->mag_x[1] << 8) | sensor->mag_x[0]) >> 3;    // [0] is high bit, [1] is low bit
+	int mdata_y = (((int)sensor->mag_y[1] << 8) | sensor->mag_y[0]) >> 3;    // [0] is high bit, [1] is low bit
+	int mdata_z = (((int)sensor->mag_z[1] << 8) | sensor->mag_z[0]) >> 3;    // [0] is high bit, [1] is low bit
+	int data_r =  (((int)sensor->temperature[1] << 8) | sensor->temperature[0]) >> 2;
+	int temp=0;
+	temp = ((int)(((int)((((long)sensor->dig_xyz1) << 14)/(data_r != 0 ? data_r : sensor->dig_xyz1))) - ((int)0x4000)));
+	sensor->cov_tmp = ((int)((((long)mdata_x) *
+	        ((((((((long)sensor->dig_xy2) * ((((long)temp) * ((long)temp)) >> 7)) +
+	           (((long)temp) * ((long)(((int)sensor->dig_xy1) << 7)))) >> 9) +
+	         ((long)0x100000)) * ((long)(((int)sensor->dig_x2) + ((int)0xA0)))) >> 12)) >> 13)) +
+	      (((int)sensor->dig_x1) << 3);
 	sensor->mag_x_float = (float)sensor->cov_tmp * sensor->mag_reso;
-	sensor->cov_tmp = (((int)sensor->mag_y[1] << 8) | sensor->mag_y[0]) >> 3;    // [0] is high bit, [1] is low bit
+
+	temp = ((int)(((int)((((long)sensor->dig_xyz1) << 14)/(data_r != 0 ? data_r : sensor->dig_xyz1))) - ((int)0x4000)));
+	sensor->cov_tmp = ((int)((((long)mdata_y) *
+	        ((((((((long)sensor->dig_xy2) * ((((long)temp) * ((long)temp)) >> 7)) +
+	           (((long)temp) * ((long)(((int)sensor->dig_xy1) << 7)))) >> 9) +
+	               ((long)0x100000)) * ((long)(((int)sensor->dig_y2) + ((int)0xA0)))) >> 12)) >> 13)) +
+	      (((int)sensor->dig_y1) << 3);
 	sensor->mag_y_float = (float)sensor->cov_tmp * sensor->mag_reso;
-	sensor->cov_tmp = (((int)sensor->mag_z[1] << 8) | sensor->mag_z[0]) >> 1;    // [0] is high bit, [1] is low bit
+
+	sensor->cov_tmp = (((((long)(mdata_z - sensor->dig_z4)) << 15) - ((((long)sensor->dig_z3) * ((long)(((int)data_r) -
+	  ((int)sensor->dig_xyz1))))>>2))/(sensor->dig_z2 + ((int)(((((long)sensor->dig_z1) * ((((int)data_r) << 1)))+(1<<15))>>16))));
 	sensor->mag_z_float = (float)sensor->cov_tmp * sensor->mag_reso;
+}
+
+
+void trimBMX055(struct Sensor *sensor)  // get trim values for magnetometer sensitivity
+{
+    unsigned char rawData[2];  //placeholder for 2-byte trim data
+    Accel_Read_Register(BMM050_DIG_X1, &sensor->dig_x1);
+    Accel_Read_Register(BMM050_DIG_X2, &sensor->dig_x2);
+    Accel_Read_Register(BMM050_DIG_Y1, &sensor->dig_y1);
+    Accel_Read_Register(BMM050_DIG_Y2, &sensor->dig_y2);
+    Accel_Read_Register(BMM050_DIG_XY1, &sensor->dig_xy1);
+    Accel_Read_Register(BMM050_DIG_XY2, &sensor->dig_xy2);
+
+    Mag_Read_Register(BMM050_DIG_Z1_LSB,rawData);
+    Mag_Read_Register(BMM050_DIG_Z1_MSB,rawData+1);
+    sensor->dig_z1 = (int) (((int)rawData[1] << 8) | rawData[0]);
+    Mag_Read_Register(BMM050_DIG_Z2_LSB,rawData);
+    Mag_Read_Register(BMM050_DIG_Z2_MSB,rawData+1);
+    sensor->dig_z2 = (int) (((int)rawData[1] << 8) | rawData[0]);
+    Mag_Read_Register(BMM050_DIG_Z3_LSB,rawData);
+    Mag_Read_Register(BMM050_DIG_Z3_MSB,rawData+1);
+    sensor->dig_z3 = (int) (((int)rawData[1] << 8) | rawData[0]);
+    Mag_Read_Register(BMM050_DIG_Z4_LSB,rawData);
+    Mag_Read_Register(BMM050_DIG_Z4_MSB,rawData+1);
+    sensor->dig_z4 = (int) (((int)rawData[1] << 8) | rawData[0]);
+    Mag_Read_Register(BMM050_DIG_XYZ1_LSB,rawData);
+    Mag_Read_Register(BMM050_DIG_XYZ1_MSB,rawData+1);
+    sensor->dig_xyz1 = (int) (((int)rawData[1] << 8) | rawData[0]);
+}
+
+void Temp_Read_Data(unsigned char *t){
+	Mag_Read_Register(BMX055_MAG_ROUT_LSB,t);
+	Mag_Read_Register(BMX055_MAG_ROUT_MSB,t+1);
 }
