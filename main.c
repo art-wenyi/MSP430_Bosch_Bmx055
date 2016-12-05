@@ -177,13 +177,13 @@ int main(void) {
 //		pitch_accl2 = sensor_calibrate.pitch_accl * RAD2DEG;
 //		roll_accl2  = sensor_calibrate.roll_accl * RAD2DEG;
 		// display to pc from uart
-		ftos(roll2, sensor_data_disp, 1);
+		ftos(sensor_calibrate.mx, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   ");
-		ftos(pitch2, sensor_data_disp, 1);
+		ftos(sensor_calibrate.my, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   ");
-		ftos(yaw2, sensor_data_disp, 1);
+		ftos(sensor_calibrate.mz, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   \n");
 		_nop();

@@ -167,12 +167,12 @@ void Bmx_Convert_Data(struct Sensor *sensor){
 void trimBMX055(struct Sensor *sensor)  // get trim values for magnetometer sensitivity
 {
     unsigned char rawData[2];  //placeholder for 2-byte trim data
-    Accel_Read_Register(BMM050_DIG_X1, &sensor->dig_x1);
-    Accel_Read_Register(BMM050_DIG_X2, &sensor->dig_x2);
-    Accel_Read_Register(BMM050_DIG_Y1, &sensor->dig_y1);
-    Accel_Read_Register(BMM050_DIG_Y2, &sensor->dig_y2);
-    Accel_Read_Register(BMM050_DIG_XY1, &sensor->dig_xy1);
-    Accel_Read_Register(BMM050_DIG_XY2, &sensor->dig_xy2);
+    Mag_Read_Register(BMM050_DIG_X1, &sensor->dig_x1);
+    Mag_Read_Register(BMM050_DIG_X2, &sensor->dig_x2);
+    Mag_Read_Register(BMM050_DIG_Y1, &sensor->dig_y1);
+    Mag_Read_Register(BMM050_DIG_Y2, &sensor->dig_y2);
+    Mag_Read_Register(BMM050_DIG_XY1, &sensor->dig_xy1);
+    Mag_Read_Register(BMM050_DIG_XY2, &sensor->dig_xy2);
 
     Mag_Read_Register(BMM050_DIG_Z1_LSB,rawData);
     Mag_Read_Register(BMM050_DIG_Z1_MSB,rawData+1);
