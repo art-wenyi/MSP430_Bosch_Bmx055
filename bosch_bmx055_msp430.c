@@ -142,24 +142,55 @@ void Bmx_Convert_Data(struct Sensor *sensor){
 	int mdata_z = (((int)sensor->mag_z[1] << 8) | sensor->mag_z[0]) >> 1;    // [0] is high bit, [1] is low bit
 	int data_r =  (((int)sensor->temperature[1] << 8) | sensor->temperature[0]) >> 2;
 	int temp=0;
-	temp = ((int)(((int)((((long)sensor->dig_xyz1) << 14)/(data_r != 0 ? data_r : sensor->dig_xyz1))) - ((int)0x4000)));
-	sensor->cov_tmp = ((int)((((long)mdata_x) *
-	        ((((((((long)sensor->dig_xy2) * ((((long)temp) * ((long)temp)) >> 7)) +
-	           (((long)temp) * ((long)(((int)sensor->dig_xy1) << 7)))) >> 9) +
-	         ((long)0x100000)) * ((long)(((int)sensor->dig_x2) + ((int)0xA0)))) >> 12)) >> 13)) +
-	      (((int)sensor->dig_x1) << 3);
+	// compensate mag x
+	if(mdata_x!=-4096){
+		if(data_r!=0 && sensor->dig_xyz1!=0){
+			temp = ((int)(((int)((((long)sensor->dig_xyz1) << 14)/(data_r != 0 ? data_r : sensor->dig_xyz1))) - ((int)0x4000)));
+			sensor->cov_tmp = ((int)((((long)mdata_x) *
+				        ((((((((long)sensor->dig_xy2) * ((((long)temp) * ((long)temp)) >> 7)) +
+				           (((long)temp) * ((long)(((int)sensor->dig_xy1) << 7)))) >> 9) +
+				         ((long)0x100000)) * ((long)(((int)sensor->dig_x2) + ((int)0xA0)))) >> 12)) >> 13)) +
+				      (((int)sensor->dig_x1) << 3);
+		}else{
+			sensor->cov_tmp = -32768;
+		}
+	}else{
+		sensor->cov_tmp = -32768;
+	}
 	sensor->mag_x_float = (float)sensor->cov_tmp * sensor->mag_reso;
 
-	temp = ((int)(((int)((((long)sensor->dig_xyz1) << 14)/(data_r != 0 ? data_r : sensor->dig_xyz1))) - ((int)0x4000)));
-	sensor->cov_tmp = ((int)((((long)mdata_y) *
-	        ((((((((long)sensor->dig_xy2) * ((((long)temp) * ((long)temp)) >> 7)) +
-	           (((long)temp) * ((long)(((int)sensor->dig_xy1) << 7)))) >> 9) +
-	               ((long)0x100000)) * ((long)(((int)sensor->dig_y2) + ((int)0xA0)))) >> 12)) >> 13)) +
-	      (((int)sensor->dig_y1) << 3);
+	// compensate mag y
+	if(mdata_y!=-4096){
+		if(data_r!=0 && sensor->dig_xyz1!=0){
+			temp = ((int)(((int)((((long)sensor->dig_xyz1) << 14)/(data_r != 0 ? data_r : sensor->dig_xyz1))) - ((int)0x4000)));
+			sensor->cov_tmp = ((int)((((long)mdata_y) *
+					((((((((long)sensor->dig_xy2) * ((((long)temp) * ((long)temp)) >> 7)) +
+					   (((long)temp) * ((long)(((int)sensor->dig_xy1) << 7)))) >> 9) +
+						   ((long)0x100000)) * ((long)(((int)sensor->dig_y2) + ((int)0xA0)))) >> 12)) >> 13)) +
+				  (((int)sensor->dig_y1) << 3);
+		}else{
+			sensor->cov_tmp = -32768;
+		}
+	}else{
+		sensor->cov_tmp = -32768;
+	}
 	sensor->mag_y_float = (float)sensor->cov_tmp * sensor->mag_reso;
 
-	sensor->cov_tmp = (((((long)(mdata_z - sensor->dig_z4)) << 15) - ((((long)sensor->dig_z3) * ((long)(((int)data_r) -
-	  ((int)sensor->dig_xyz1))))>>2))/(sensor->dig_z2 + ((int)(((((long)sensor->dig_z1) * ((((int)data_r) << 1)))+(1<<15))>>16))));
+	// compensate mag z
+	long tempz=0;
+	if(mdata_z!=-4096){
+		if(sensor->dig_z2!=0 && sensor->dig_z1!=0 && data_r!=0 && sensor->dig_xyz1!=0){
+			tempz = (((((long)(mdata_z - sensor->dig_z4)) << 15) - ((((long)sensor->dig_z3) * ((long)(((int)data_r) -
+				  ((int)sensor->dig_xyz1))))>>2))/(sensor->dig_z2 + ((int)(((((long)sensor->dig_z1) * ((((int)data_r) << 1)))+(1<<15))>>16))));
+		}else{
+			tempz=-32768;
+		}
+		if(tempz>32768) tempz=32768;
+		if(tempz<-32768) tempz=-32768;
+	}else{
+		sensor->cov_tmp=-32768;
+	}
+	sensor->cov_tmp = (int)tempz;
 	sensor->mag_z_float = (float)sensor->cov_tmp * sensor->mag_reso;
 }
 
