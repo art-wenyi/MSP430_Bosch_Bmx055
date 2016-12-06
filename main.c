@@ -80,7 +80,7 @@ int main(void) {
 	TA1CTL = TASSEL_2 | ID__8 | MC_2 | TACLR;         // SMCLK, clock div by 8, continuous mode, clear TAR
 
 	char sensor_data_disp[16];
-	float roll,pitch,yaw;
+	float roll=0,pitch=0,yaw=0;
 	struct KF pitchKF, rollKF;
 	pitchKF.initial = true;
 	rollKF.initial = true;
@@ -154,21 +154,23 @@ int main(void) {
 		sensor_calibrate.t_elapse =	TA1R;
 		sensor_calibrate.dt = (float)sensor_calibrate.t_elapse * 0.000001;		// convert dt to second
 
-		yaw = yaw * 0.75 + yaw_mag*0.25;
+		//yaw = yaw * 0.75 + yaw_mag*0.25;
 
-//		if (abs(yaw)>(0.5*PI) && abs(yaw_mag)>(0.5*PI)){
-//		  float sgn_yaw = yaw/abs(yaw);
-//		  float sgn_yawmag = yaw_mag/abs(yaw_mag);
-//		  if (sgn_yaw != sgn_yawmag){
-//		    yaw = yaw + 2*PI*sgn_yawmag;
-//		  }
-//		}
-//
-//	    yaw = yaw * 0.9 + yaw_mag * 0.1;
-//
-//		if (abs(yaw)>= PI){
-//		  yaw = yaw - 2*PI*yaw/abs(yaw);
-//		}
+		if (abs(yaw)>(0.5*PI) && abs(yaw_mag)>(0.5*PI)){
+		  float sgn_yaw = yaw > 0 ? 1.0 : -1.0;
+		  float sgn_yawmag = yaw_mag > 0 ? 1.0 : -1.0;
+		  if (sgn_yaw != sgn_yawmag){
+		    yaw = yaw + 2*PI*sgn_yawmag;
+		  }
+		}
+
+	    yaw = yaw * 0.75 + yaw_mag * 0.25;
+
+		if(yaw>=PI){
+			yaw = yaw - 2*PI;
+		}else if(yaw<=-PI){
+			yaw = yaw + 2*PI;
+		}
 
 		roll2 = roll * RAD2DEG;
 		pitch2 = pitch * RAD2DEG;
@@ -177,13 +179,13 @@ int main(void) {
 //		pitch_accl2 = sensor_calibrate.pitch_accl * RAD2DEG;
 //		roll_accl2  = sensor_calibrate.roll_accl * RAD2DEG;
 		// display to pc from uart
-		ftos(sensor_calibrate.mx, sensor_data_disp, 1);
+		ftos(roll2, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   ");
-		ftos(sensor_calibrate.my, sensor_data_disp, 1);
+		ftos(pitch2, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   ");
-		ftos(sensor_calibrate.mz, sensor_data_disp, 1);
+		ftos(yaw2, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   \n");
 		_nop();
