@@ -139,7 +139,7 @@ void Bmx_Convert_Data(struct Sensor *sensor){
 
 	int mdata_x = (((int)sensor->mag_x[1] << 8) | sensor->mag_x[0]) >> 3;    // [0] is high bit, [1] is low bit
 	int mdata_y = (((int)sensor->mag_y[1] << 8) | sensor->mag_y[0]) >> 3;    // [0] is high bit, [1] is low bit
-	int mdata_z = (((int)sensor->mag_z[1] << 8) | sensor->mag_z[0]) >> 3;    // [0] is high bit, [1] is low bit
+	int mdata_z = (((int)sensor->mag_z[1] << 8) | sensor->mag_z[0]) >> 1;    // [0] is high bit, [1] is low bit
 	int data_r =  (((int)sensor->temperature[1] << 8) | sensor->temperature[0]) >> 2;
 	int temp=0;
 	temp = ((int)(((int)((((long)sensor->dig_xyz1) << 14)/(data_r != 0 ? data_r : sensor->dig_xyz1))) - ((int)0x4000)));
