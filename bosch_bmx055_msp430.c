@@ -28,6 +28,8 @@ void BMX055_Chip_Init(){
  	Gyro_Write_Register(BMX055_GYRO_BW, G_100Hz12Hz);     // set GYRO ODR and Bandwidth
  	Gyro_Write_Register(BMX055_GYRO_LPM1, 0x00);			// set to normal mode, no suspend
  	Gyro_Write_Register(BMX055_GYRO_RATE_HBW, 0x00);              // Use filtered data, read lsb before msb to ensure data integrity
+ 	Gyro_Write_Register(BMX055_GYRO_OFC1, 0x00);			// bug chip messed up with NVM, should set offset to 0
+ 	Gyro_Write_Register(BMX055_GYRO_OFC2, 0x00);			// same as above
 
  	// start with all sensors in default mode with all registers reset
    	Accel_Write_Register(BMX055_ACC_BGW_SOFTRESET, 0xB6);  // reset accelerometer

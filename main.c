@@ -5,6 +5,7 @@
 #include "msp430_uart.h"
 //#include "msp430_math.h"
 #include "math.h"
+#include "main.h"
 /*
  * main.c
  */
@@ -28,14 +29,17 @@ struct Sensor_Calibrate sensor_calibrate = {
 	.dt = 0
 };
 
+struct EularAngle eular_angle = {
+	.roll = 0,
+	.pitch = 0,
+	.yaw  = 0,
+	.roll_degree = 0,
+	.pitch_degree = 0,
+	.yaw_degree =0
+};
+
 struct KF pitchKF, rollKF;
 int calibrate_flag = 0;
-
-// use for convert from float to string
-void reverse(char *str, int len);
-int intToStr(int x, char str[], int d);
-void ftos(float n, char *res, int afterpoint);
-void buttonInit(void);
 
 
 int main(void) {
@@ -74,127 +78,42 @@ int main(void) {
 	UartA2_Init(115200, 'n', 'l', '8', 1);		  // init uart 2
 	buttonInit();
 	__enable_interrupt();
+	__delay_cycles(800000);
 
 
 	// setting ta1, for calculate the exec time
 	TA1CTL = TASSEL_2 | ID__8 | MC_2 | TACLR;         // SMCLK, clock div by 8, continuous mode, clear TAR
 
 	char sensor_data_disp[16];
-	float roll=0,pitch=0,yaw=0;
 	struct KF pitchKF, rollKF;
 	pitchKF.initial = true;
 	rollKF.initial = true;
 	InitializeKF(&pitchKF,0.0002,0.0004,0.5);
 	InitializeKF(&rollKF,0.0002,0.0004,0.5);
 	trimBMX055(&sensor);		// get trim data from sensor
-	float roll2, pitch2, yaw2;
 	//unsigned char tmp;
 	while(1){
-		// read data from sensor
-		Gyro_Read_Data(sensor.gyro_x, sensor.gyro_y, sensor.gyro_z);
-		Accel_Read_Data(sensor.accel_x, sensor.accel_y, sensor.accel_z);
-		Mag_Read_Data(sensor.mag_x, sensor.mag_y, sensor.mag_z);
-		Temp_Read_Data(sensor.temperature);
-		sensor_calibrate.t_elapse =	TA1R;		// get a elapse time, for calibrate calculation
-		TA1CTL |= TACLR;		// clear ta1 count
-		// convert raw 2 byte data from float value
-		sensor.convert(&sensor);
-		// send raw float data to calibrate
-		sensor_calibrate.gxr = -sensor.gyro_x_float;
-		sensor_calibrate.gyr = -sensor.gyro_z_float;
-		sensor_calibrate.gzr = -sensor.gyro_y_float;
-		sensor_calibrate.ax = -sensor.accel_x_float;
-		sensor_calibrate.ay = -sensor.accel_z_float;
-		sensor_calibrate.az = -sensor.accel_y_float;
-		sensor_calibrate.mxr = sensor.mag_y_float;
-		sensor_calibrate.myr = -sensor.mag_z_float;
-		sensor_calibrate.mzr = -sensor.mag_x_float;
-		// acutal algorithm for calibrate
-
-		// use quaterion filter method
-//		PreProcess(&sensor_calibrate);
-//		UpdateGDFilter_MARG(&sensor_calibrate);
-//		roll = getRoll(sensor_calibrate.SEq1, sensor_calibrate.SEq2, sensor_calibrate.SEq3, sensor_calibrate.SEq4);
-//		pitch = getPitch(sensor_calibrate.SEq1, sensor_calibrate.SEq2, sensor_calibrate.SEq3, sensor_calibrate.SEq4);
-//		yaw = getYaw(sensor_calibrate.SEq1, sensor_calibrate.SEq2, sensor_calibrate.SEq3, sensor_calibrate.SEq4);
-
-		// use simplified method
-		sensor_calibrate.mx = (sensor_calibrate.mxr - sensor_calibrate.mxb)/sensor_calibrate.mxs;
-		sensor_calibrate.my = (sensor_calibrate.myr - sensor_calibrate.myb)/sensor_calibrate.mys;
-		sensor_calibrate.mz = (sensor_calibrate.mzr - sensor_calibrate.mzb)/sensor_calibrate.mzs;
-
-		sensor_calibrate.gx = sensor_calibrate.gxr - GXB;
-		sensor_calibrate.gy = sensor_calibrate.gyr - GYB;
-		sensor_calibrate.gz = sensor_calibrate.gzr - GZB;
-
-		sensor_calibrate.pitch_accl = -atan2f(sensor_calibrate.ax,sqrtf(sensor_calibrate.ay*sensor_calibrate.ay + sensor_calibrate.az*sensor_calibrate.az));
-		sensor_calibrate.roll_accl = atan2f(sensor_calibrate.ay, sensor_calibrate.az);
-//		sensor_calibrate.roll_accl = atan2f(sensor_calibrate.ay, sqrtf(sensor_calibrate.ax*sensor_calibrate.ax + sensor_calibrate.az*sensor_calibrate.az));
-
-		sensor_calibrate.dt = (float)sensor_calibrate.t_elapse * 0.000001;		// convert dt to second
-		UpdateKF(&pitchKF, sensor_calibrate.pitch_accl, sensor_calibrate.gy*DEG2RAD);
-		RunKF(&pitchKF, sensor_calibrate.dt);
-		UpdateKF(&rollKF, sensor_calibrate.roll_accl, sensor_calibrate.gx*DEG2RAD);
-		RunKF(&rollKF, sensor_calibrate.dt);
-
-
-
-		pitch = pitchKF.x0;
-		roll = rollKF.x0;
-		float sin_pitch = sinf(pitch);
-		float cos_roll = cosf(roll);
-		float sin_roll = sinf(roll);
-
-		sensor_calibrate.MX = sensor_calibrate.mx*cosf(pitch) + sensor_calibrate.my*sin_pitch*sin_roll + sensor_calibrate.mz*sin_pitch*cos_roll;
-		sensor_calibrate.MY = sensor_calibrate.my*cos_roll - sensor_calibrate.mz*sin_roll;
-
-
-		float yaw_mag = -atan2f(sensor_calibrate.MY, sensor_calibrate.MX);
-
-		sensor_calibrate.t_elapse =	TA1R;
-		sensor_calibrate.dt = (float)sensor_calibrate.t_elapse * 0.000001;		// convert dt to second
-
-		//yaw = yaw * 0.75 + yaw_mag*0.25;
-
-		if (abs(yaw)>(0.5*PI) && abs(yaw_mag)>(0.5*PI)){
-		  float sgn_yaw = yaw > 0 ? 1.0 : -1.0;
-		  float sgn_yawmag = yaw_mag > 0 ? 1.0 : -1.0;
-		  if (sgn_yaw != sgn_yawmag){
-		    yaw = yaw + 2*PI*sgn_yawmag;
-		  }
-		}
-
-	    yaw = yaw * 0.75 + yaw_mag * 0.25;
-
-		if(yaw>=PI){
-			yaw = yaw - 2*PI;
-		}else if(yaw<=-PI){
-			yaw = yaw + 2*PI;
-		}
-
-		roll2 = roll * RAD2DEG;
-		pitch2 = pitch * RAD2DEG;
-		yaw2 = yaw * RAD2DEG;
+		getOrientatoin(&sensor, &sensor_calibrate, &pitchKF, &rollKF, &eular_angle);
 //		float pitch_accl2,roll_accl2;
 //		pitch_accl2 = sensor_calibrate.pitch_accl * RAD2DEG;
 //		roll_accl2  = sensor_calibrate.roll_accl * RAD2DEG;
 		// display to pc from uart
-		ftos(roll2, sensor_data_disp, 1);
+		ftos(eular_angle.roll_degree, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   ");
-		ftos(pitch2, sensor_data_disp, 1);
+		ftos(eular_angle.pitch_degree, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   ");
-		ftos(yaw2, sensor_data_disp, 1);
+		ftos(eular_angle.yaw_degree, sensor_data_disp, 1);
 		UartA2_sendstr(sensor_data_disp);
 		UartA2_sendstr("   \n");
 		_nop();
 
 		if(calibrate_flag==1){
 			calibrate_flag=0;
-			calibrate(&sensor_calibrate, &sensor);
+			//calibrate(&sensor_calibrate, &sensor);
+			calibrate_4axis(&sensor, &sensor_calibrate, &pitchKF, &rollKF, &eular_angle);
 		}
-
 	}
 
 }

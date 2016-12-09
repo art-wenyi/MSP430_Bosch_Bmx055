@@ -26,6 +26,7 @@
 #define GYRO_BIAS_DRIFT 0
 
 #define PI 3.1416
+#define CALIBSAMPLENUMBER	50	// calibrate sample amount needed for each axis
 
 struct Sensor_Calibrate{
 	float ax,ay,az;
@@ -45,6 +46,15 @@ struct Sensor_Calibrate{
 
 };
 
+struct EularAngle{
+	float roll;
+	float pitch;
+	float yaw;
+	float roll_degree;
+	float pitch_degree;
+	float yaw_degree;
+};
+
 struct KF{
   bool initial;
   float x0,x1;
@@ -62,4 +72,6 @@ void UpdateKF(struct KF *kf, float y, float u);
 void InitializeKF(struct KF *kf, float w00, float w11, float v);
 void RunKF(struct KF *kf, float dt);
 void calibrate(struct Sensor_Calibrate *sensor_calibrate, struct Sensor *sensor);
+void getOrientatoin(struct Sensor *sensor, struct Sensor_Calibrate *sensor_calibrate, struct KF *pitchKF, struct KF *rollKF, struct EularAngle *eular_angle);
+void calibrate_4axis(struct Sensor *sensor, struct Sensor_Calibrate *sensor_calibrate, struct KF *pitchKF, struct KF *rollKF, struct EularAngle *eular_angle);
 #endif /* BOSCH_BMX055_CALIBRATE_H_ */
