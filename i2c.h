@@ -10,6 +10,7 @@
 //****************************************************************************//
 #define 	I2C_SOURCE_CLOCK		0x00	// 0x00 SMCLK or 0x01 ACLK
 #define		I2C_SOURCE_CLOCK_FREQ  SMCLK_FREQ
+#define     I2C_SOURCE_CLOCK_SMCLK  0x00
 #define     SMCLK_FREQ			   8000000   // 1Mhz?
 // Gyro I2C clock
 #define		I2C_CLOCK_FREQ			200000

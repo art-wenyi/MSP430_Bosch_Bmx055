@@ -10,6 +10,7 @@
 #include "msp430_uart.h"
 #include "math.h"
 #include "main.h"
+#include "Display.h"
 
 // get all info from bosch sensor, and calculate roll pitch yaw
 void getOrientatoin(struct Sensor *sensor, struct Sensor_Calibrate *sensor_calibrate, struct KF *pitchKF, struct KF *rollKF, struct EularAngle *eular_angle){
@@ -198,15 +199,16 @@ void calibrate_4axis(struct Sensor *sensor, struct Sensor_Calibrate *sensor_cali
 	float mag_1[3] = {0,0,0}, mag_2[3]={0,0,0};
 	while(calibMode!=0){
 		getOrientatoin(sensor, sensor_calibrate, pitchKF, rollKF, eular_angle);
-		ftos(eular_angle->roll_degree, sensor_data_disp, 1);
-		UartA2_sendstr(sensor_data_disp);
-		UartA2_sendstr("   ");
-		ftos(eular_angle->pitch_degree, sensor_data_disp, 1);
-		UartA2_sendstr(sensor_data_disp);
-		UartA2_sendstr("   ");
-		ftos(eular_angle->yaw_degree, sensor_data_disp, 1);
-		UartA2_sendstr(sensor_data_disp);
-		UartA2_sendstr("   \n");
+//		ftos(eular_angle->roll_degree, sensor_data_disp, 1);
+//		UartA2_sendstr(sensor_data_disp);
+//		UartA2_sendstr("   ");
+//		ftos(eular_angle->pitch_degree, sensor_data_disp, 1);
+//		UartA2_sendstr(sensor_data_disp);
+//		UartA2_sendstr("   ");
+//		ftos(eular_angle->yaw_degree, sensor_data_disp, 1);
+//		UartA2_sendstr(sensor_data_disp);
+//		UartA2_sendstr("   \n");
+		displayCalibration(calibMode, (int)eular_angle->roll_degree, (int)eular_angle->pitch_degree);
 		switch (calibMode){		// calibrate with certain sequence, left, right, top, bottom
 		  case 1:
 			if (fabs(eular_angle->pitch*RAD2DEG-90.0)<=5.0 && fabs(eular_angle->roll*RAD2DEG)<=5.0){
@@ -214,17 +216,18 @@ void calibrate_4axis(struct Sensor *sensor, struct Sensor_Calibrate *sensor_cali
 				mag_1[2] += sensor_calibrate->mzr;              // float
 				mag_1[1] += sensor_calibrate->mxr;  //x
 				calibCount++;
-				ftos((float)calibCount, sensor_data_disp, 1);
-				UartA2_sendstr(sensor_data_disp);
-				UartA2_sendstr("   \n");
+//				ftos((float)calibCount, sensor_data_disp, 1);
+//				UartA2_sendstr(sensor_data_disp);
+//				UartA2_sendstr("   \n");
+
 			  } else {
 				mag_1[2] = mag_1[2]/calibCount;
 				mag_1[1] = mag_1[1]/calibCount;
 				calibCount = 0;
 				calibMode = 2;
-				ftos(666.6, sensor_data_disp, 1);
-				UartA2_sendstr(sensor_data_disp);
-				UartA2_sendstr("   \n");
+//				ftos(666.6, sensor_data_disp, 1);
+//				UartA2_sendstr(sensor_data_disp);
+//				UartA2_sendstr("   \n");
 			  }
 			}
 			break;
@@ -234,9 +237,9 @@ void calibrate_4axis(struct Sensor *sensor, struct Sensor_Calibrate *sensor_cali
 				mag_2[2] += sensor_calibrate->mzr;
 				mag_2[1] += sensor_calibrate->mxr;    // x
 				calibCount++;
-				ftos((float)calibCount, sensor_data_disp, 1);
-				UartA2_sendstr(sensor_data_disp);
-				UartA2_sendstr("   \n");
+//				ftos((float)calibCount, sensor_data_disp, 1);
+//				UartA2_sendstr(sensor_data_disp);
+//				UartA2_sendstr("   \n");
 			  } else {
 				mag_2[2] = mag_2[2]/calibCount;
 				mag_2[1] = mag_2[1]/calibCount;
@@ -250,7 +253,7 @@ void calibrate_4axis(struct Sensor *sensor, struct Sensor_Calibrate *sensor_cali
 			break;
 
 		  case 3:
-			if (fabs(eular_angle->roll*RAD2DEG-90.0)<=5.0 && fabs(eular_angle->pitch*RAD2DEG)<=5.0){
+			if (fabs(eular_angle->roll*RAD2DEG+90.0)<=5.0 && fabs(eular_angle->pitch*RAD2DEG)<=5.0){
 			  if (calibCount < CALIBSAMPLENUMBER){
 				mag_1[0] += sensor_calibrate->myr;    // y
 				calibCount ++;
@@ -269,7 +272,7 @@ void calibrate_4axis(struct Sensor *sensor, struct Sensor_Calibrate *sensor_cali
 			break;
 
 		  case 4:
-			if (fabs(eular_angle->roll*RAD2DEG+90.0)<=5.0 && fabs(eular_angle->pitch*RAD2DEG)<=5.0){
+			if (fabs(eular_angle->roll*RAD2DEG-90.0)<=5.0 && fabs(eular_angle->pitch*RAD2DEG)<=5.0){
 			  if (calibCount < CALIBSAMPLENUMBER){
 				mag_2[0] += sensor_calibrate->myr;    // y
 				calibCount ++;

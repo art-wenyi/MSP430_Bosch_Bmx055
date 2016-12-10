@@ -6,6 +6,7 @@
 //#include "msp430_math.h"
 #include "math.h"
 #include "main.h"
+#include "display.h"
 /*
  * main.c
  */
@@ -40,7 +41,7 @@ struct EularAngle eular_angle = {
 
 struct KF pitchKF, rollKF;
 int calibrate_flag = 0;
-
+int direction=1;
 
 int main(void) {
 	WDTCTL = WDTPW + WDTHOLD;                 // Stop WDT
@@ -77,6 +78,12 @@ int main(void) {
 	BMX055_Init();		// sensor initiation
 	UartA2_Init(115200, 'n', 'l', '8', 1);		  // init uart 2
 	buttonInit();
+	/* Initializes the Display for proper operation */
+		Display_Initial();
+
+		//UCB1IE |= BIT0;
+		/* ZERO OUT THE SCREEN BUFFER */
+		displayClear();
 	__enable_interrupt();
 	__delay_cycles(800000);
 
@@ -84,7 +91,7 @@ int main(void) {
 	// setting ta1, for calculate the exec time
 	TA1CTL = TASSEL_2 | ID__8 | MC_2 | TACLR;         // SMCLK, clock div by 8, continuous mode, clear TAR
 
-	char sensor_data_disp[16];
+	//char sensor_data_disp[16];
 	struct KF pitchKF, rollKF;
 	pitchKF.initial = true;
 	rollKF.initial = true;
@@ -92,21 +99,24 @@ int main(void) {
 	InitializeKF(&rollKF,0.0002,0.0004,0.5);
 	trimBMX055(&sensor);		// get trim data from sensor
 	//unsigned char tmp;
+
 	while(1){
 		getOrientatoin(&sensor, &sensor_calibrate, &pitchKF, &rollKF, &eular_angle);
 //		float pitch_accl2,roll_accl2;
 //		pitch_accl2 = sensor_calibrate.pitch_accl * RAD2DEG;
 //		roll_accl2  = sensor_calibrate.roll_accl * RAD2DEG;
 		// display to pc from uart
-		ftos(eular_angle.roll_degree, sensor_data_disp, 1);
-		UartA2_sendstr(sensor_data_disp);
-		UartA2_sendstr("   ");
-		ftos(eular_angle.pitch_degree, sensor_data_disp, 1);
-		UartA2_sendstr(sensor_data_disp);
-		UartA2_sendstr("   ");
-		ftos(eular_angle.yaw_degree, sensor_data_disp, 1);
-		UartA2_sendstr(sensor_data_disp);
-		UartA2_sendstr("   \n");
+//		ftos(eular_angle.roll_degree, sensor_data_disp, 1);
+//		UartA2_sendstr(sensor_data_disp);
+//		UartA2_sendstr("   ");
+//		ftos(eular_angle.pitch_degree, sensor_data_disp, 1);
+//		UartA2_sendstr(sensor_data_disp);
+//		UartA2_sendstr("   ");
+//		ftos(eular_angle.yaw_degree, sensor_data_disp, 1);
+//		UartA2_sendstr(sensor_data_disp);
+//		UartA2_sendstr("   \n");
+		direction = navigationGetMoveDirection(-eular_angle.yaw_degree);
+		displayTime(9, 15, direction);
 		_nop();
 
 		if(calibrate_flag==1){
@@ -127,6 +137,12 @@ __interrupt void Port_1(void){
 		P1IFG &= ~BIT1;												// Clear the Button Interrupt Flag
 		calibrate_flag=1;
 	}
+
+	if(P1IFG & BIT3){		// power down route
+		P1IFG &= ~BIT3;	// Clear the Button Interrupt Flag
+		P1OUT &= ~BIT2;			// turn off the MSP430 power supply, shutdown all.
+		__delay_cycles(4000000);				// shutdown need at least 100ms to execute, so delay here prevent exit this power off route
+	}
 }
 //========================================================
 //========================================================
@@ -138,6 +154,15 @@ void buttonInit(void){
 	P1IES |= BIT1;                      						// Interrupt on high-to-low transition
 	P1IE |= BIT1;                       						// Interrupt enable
 	P1IFG &= ~BIT1;											// Clear Interrupt Flag
+
+	/* STM6600 INT Initialization */
+	P1DIR &= ~BIT3;											// INT is an input
+	P1OUT |= BIT3;                      						// Pull-up resistor
+	P1REN |= BIT3;                      						// Resistor enabled
+	P1DS  &= ~BIT3;
+	P1IES |= BIT3;                      						// Interrupt on high-to-low transition
+	P1IE |= BIT3;                       						// Interrupt enable
+	P1IFG &= ~BIT3;											// Clear Interrupt Flag
 }
 //========================================================
 // reverses a string 'str' of length 'len'
@@ -212,4 +237,40 @@ void ftos(float n, char *res, int afterpoint) 		// after point is the resolution
 
         intToStr((int)fpart, res + i + 1, afterpoint);
     }
+}
+
+
+int navigationGetMoveDirection(int bearing){
+
+    int final_degree = 0;
+    int direction = 0;
+
+    final_degree = bearing;
+    final_degree = (final_degree + 360) % 360;
+
+
+    if((final_degree >= 345.0)&&(final_degree < 360)){
+        direction = 0;
+    }else if ((final_degree >= 0)&&(final_degree < 15.0)){
+    	direction = 0;
+    }else if((final_degree >= 15.0)&&(final_degree < 75.0)) {
+        direction = 1;
+    }else if((final_degree >= 75.0)&&(final_degree < 105.0)){
+        direction = 2;
+    }else if((final_degree >= 105.0)&&(final_degree < 165.0)){
+        direction = 3;
+    }else if((final_degree >= 165.0)&&(final_degree < 195.0)){
+        direction = 4;
+    }else if((final_degree >= 195.0)&&(final_degree < 255.0)){
+        direction = 5;
+    }else if((final_degree >= 255.0)&&(final_degree < 285.0)){
+        direction = 6;
+    }else if((final_degree >= 285.0)&&(final_degree < 345.0)){
+        direction = 7;
+    }
+    else{
+    	direction = 0;
+    }
+
+    return direction + 1;
 }

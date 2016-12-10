@@ -13,6 +13,7 @@ void buttonInit(void);
 void reverse(char *str, int len);
 int intToStr(int x, char str[], int d);
 void ftos(float n, char *res, int afterpoint);
+int navigationGetMoveDirection(int bearing);
 
 
 #endif /* MAIN_H_ */

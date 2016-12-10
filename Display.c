@@ -867,4 +867,39 @@ unsigned int* numberMappingLarge(int digit){          // mapping the numbers to 
 	displayUpdate();
 }*/
 
-
+//======================= for testing the bosch 4 axis calibration
+//=== display calorie
+void displayCalibration(int calib_state, int roll, int pitch){
+	clearDispMap();
+	int off_x=roll/8;
+	int off_y=pitch/8;		// resolution is 8 degree/pixel
+	int x=off_x+15;
+	int y=off_y+15;			// origin point is 15,15
+	x=x>0?x:0;
+	x=x<32?x:31;		// set x range 0 to 31, dont exceed boundary
+	y=y>0?y:0;
+	y=y<32?y:0;			// set y range 0 to 31
+	switch(calib_state){
+	case 1:			// do forward pitch
+		setDispMap(SYM_DOT, SYM_DOT_LEN, 15, 28);
+		setDispMap(SYM_DOT, SYM_DOT_LEN, 16, 28);	// set destination marker
+		setDispMap(SYM_DOT, SYM_DOT_LEN, x, y);	// set current point based on roll and pitch
+		break;
+	case 2:			// do rear pitch
+		setDispMap(SYM_DOT, SYM_DOT_LEN, 15, 4);
+		setDispMap(SYM_DOT, SYM_DOT_LEN, 16, 4);	// set destination marker
+		setDispMap(SYM_DOT, SYM_DOT_LEN, x, y);	// set current point based on roll and pitch
+		break;
+	case 3:			// do left roll
+		setDispMap(SYM_DOT, SYM_DOT_LEN, 4, 15);
+		setDispMap(SYM_DOT, SYM_DOT_LEN, 4, 16);	// set destination marker
+		setDispMap(SYM_DOT, SYM_DOT_LEN, x, y);	// set current point based on roll and pitch
+		break;
+	case 4:			// do right roll
+		setDispMap(SYM_DOT, SYM_DOT_LEN, 28, 15);
+		setDispMap(SYM_DOT, SYM_DOT_LEN, 28, 16);	// set destination marker
+		setDispMap(SYM_DOT, SYM_DOT_LEN, x, y);	// set current point based on roll and pitch
+		break;
+	}
+	displayUpdate();					// update the display, display on the screen
+}

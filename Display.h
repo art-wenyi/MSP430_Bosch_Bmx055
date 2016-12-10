@@ -95,4 +95,5 @@ unsigned int* numberMappingSmall(int digit);
 unsigned int* numberMappingLarge(int digit);
 
 void display1Byte(unsigned char data);
+void displayCalibration(int calib_state, int roll, int pitch);
 #endif /* DISPLAY_H_ */
