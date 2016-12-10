@@ -51,8 +51,8 @@ void getOrientatoin(struct Sensor *sensor, struct Sensor_Calibrate *sensor_calib
 	sensor_calibrate->gz = sensor_calibrate->gzr - GZB;
 
 	sensor_calibrate->pitch_accl = -atan2f(sensor_calibrate->ax,sqrtf(sensor_calibrate->ay*sensor_calibrate->ay + sensor_calibrate->az*sensor_calibrate->az));
-	sensor_calibrate->roll_accl = atan2f(sensor_calibrate->ay, sensor_calibrate->az);
-//		sensor_calibrate.roll_accl = atan2f(sensor_calibrate.ay, sqrtf(sensor_calibrate.ax*sensor_calibrate.ax + sensor_calibrate.az*sensor_calibrate.az));
+//	sensor_calibrate->roll_accl = atan2f(sensor_calibrate->ay, sensor_calibrate->az);
+	sensor_calibrate->roll_accl = atan2f(sensor_calibrate->ay, sqrtf(sensor_calibrate->ax*sensor_calibrate->ax + sensor_calibrate->az*sensor_calibrate->az));
 
 	sensor_calibrate->dt = (float)sensor_calibrate->t_elapse * 0.000001;		// convert dt to second
 	UpdateKF(pitchKF, sensor_calibrate->pitch_accl, sensor_calibrate->gy*DEG2RAD);
